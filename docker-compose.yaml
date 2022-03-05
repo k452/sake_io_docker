@@ -1,0 +1,62 @@
+version: "3.7"
+services:
+  api:
+    build:
+      context: ./sake_io_api
+      dockerfile: Dockerfile_API
+      args:
+        - UID=${UID}
+        - GID=${GID}
+        - UNAME=${UNAME}
+        - GNAME=${GNAME}
+    container_name: sake_io_api
+    command: >
+      /bin/sh -c
+        "
+        go mod tidy
+        air -c .air.toml
+        "
+    volumes:
+      - ./sake_io_api/src:/go/src/sake_io_api
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+  auth:
+    build:
+      context: ./sake_io_auth
+      dockerfile: Dockerfile
+      args:
+        - UID=${UID}
+        - GID=${GID}
+        - UNAME=${UNAME}
+        - GNAME=${GNAME}
+    container_name: sake_io_auth
+    command: >
+      /bin/sh -c
+        "
+        go mod tidy
+        air -c .air.toml
+        "
+    volumes:
+      - ./sake_io_auth/src:/go/src/sake_io_auth
+    ports:
+      - 8090:8090
+    depends_on:
+      - db
+  db:
+    build:
+      context: ./sake_io_api
+      dockerfile: Dockerfile_DB
+    container_name: sake_io_db
+    volumes:
+      - ./sake_io_api/src/sqls/init:/docker-entrypoint-initdb.d
+    ports:
+      - 3306:3306
+    command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --secure-file-priv='/docker-entrypoint-initdb.d'
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: "Asia/Tokyo"
